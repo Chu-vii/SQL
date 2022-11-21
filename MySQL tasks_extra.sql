@@ -203,6 +203,63 @@ where result < min_result
 group by name_program, name_enrollee, subject_id
 order by name_program, name_enrollee;
 
+-- ЗАПРОСЫ КОРРЕКТИРОВКИ
+
+/* 1. Создать вспомогательную таблицу applicant,  куда включить id образовательной программы, id абитуриента, сумму баллов абитуриентов (столбец itog) в отсортированном сначала по id образовательной программы, а потом по убыванию суммы баллов виде (использовать запрос из предыдущего урока).*/
+
+create table applicant as 
+select program_id, enrollee_id, sum(result) as itog
+FROM program
+    INNER JOIN program_enrollee USING (program_id)
+    INNER JOIN enrollee USING(enrollee_id)
+    INNER JOIN enrollee_subject USING(enrollee_id)
+    INNER JOIN program_subject using(subject_id, program_id)
+group by program_id, enrollee_id
+order by program_id, itog desc;
+
+/* 2. Из таблицы applicant, созданной на предыдущем шаге, удалить записи, если абитуриент на выбранную образовательную программу не набрал минимального балла хотя бы по одному предмету (использовать запрос из предыдущего урока).*/
+
+delete from applicant
+where (program_id, enrollee_id) in(select program_id, enrollee_id
+FROM program
+    INNER JOIN program_enrollee USING (program_id)
+    INNER JOIN enrollee USING(enrollee_id)
+    INNER JOIN enrollee_subject USING(enrollee_id)
+    INNER JOIN program_subject using(subject_id, program_id)
+where result < min_result
+group by program_id, enrollee_id, subject_id
+order by name_program, name_enrollee);
+
+/* 3. Повысить итоговые баллы абитуриентов в таблице applicant на значения дополнительных баллов*/
+
+update applicant 
+inner join (select enrollee_id, if(sum(bonus) is null,0, sum(bonus)) as Бонус
+from achievement join enrollee_achievement using (achievement_id)
+right join enrollee using (enrollee_id)
+group by enrollee_id) as new using (enrollee_id)
+set itog = itog+ Бонус;
+
+/* 4. Поскольку при добавлении дополнительных баллов, абитуриенты по каждой образовательной программе могут следовать не в порядке убывания суммарных баллов, необходимо создать новую таблицу applicant_order на основе таблицы applicant. При создании таблицы данные нужно отсортировать сначала по id образовательной программы, потом по убыванию итогового балла. А таблицу applicant, которая была создана как вспомогательная, необходимо удалить.*/
+
+create table applicant_order as
+select * from applicant
+order by program_id, itog desc;
+
+drop table applicant;
+
+/* 5. Включить в таблицу applicant_order новый столбец str_id целого типа , расположить его перед первым.*/
+
+Alter table applicant_order ADD str_id int first;
+
+/* 6. Занести в столбец str_id таблицы applicant_order нумерацию абитуриентов, которая начинается с 1 для каждой образовательной программы.*/
+
+SET @num_pr := 0;
+SET @row_num := 1;
+
+Update applicant_order
+set str_id = if(program_id = @num_pr, @row_num := @row_num + 1, @row_num := 1 and @num_pr := program_id);
+
+SELECT * from applicant_order;
 
 
 
