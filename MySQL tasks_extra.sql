@@ -78,6 +78,44 @@ FROM testing t INNER JOIN answer a USING (answer_id)
 GROUP BY name_subject, name_question 
 ORDER BY name_subject, Успешность DESC, name_question;
 
+-- ЗАПРОСЫ КОРРЕКТИРОВКИ
+
+/* 1. В таблицу attempt включить новую попытку для студента Баранова Павла по дисциплине «Основы баз данных». Установить текущую дату в качестве даты выполнения попытки.*/
+
+insert into attempt (student_id, subject_id, date_attempt)
+select student_id, subject_id, now()
+from student join attempt using (student_id)
+            join subject using (subject_id)
+where name_subject= 'Основы баз данных' and name_student= 'Баранов Павел';
+
+/* 2. Случайным образом выбрать три вопроса (запрос) по дисциплине, тестирование по которой собирается проходить студент, занесенный в таблицу attempt последним, и добавить их в таблицу testing. id последней попытки получить как максимальное значение id из таблицы attempt.*/
+
+insert into testing (attempt_id, question_id)
+select (select max(attempt_id) from attempt),question_id
+from question join attempt using (subject_id)
+where attempt_id = (select max(attempt_id) from attempt)
+ORDER BY RAND()
+limit 3;
+
+/* 3. Студент прошел тестирование (то есть все его ответы занесены в таблицу testing), далее необходимо вычислить результат(запрос) и занести его в таблицу attempt для соответствующей попытки.  Результат попытки вычислить как количество правильных ответов, деленное на 3 (количество вопросов в каждой попытке) и умноженное на 100. Результат округлить до целого.*/
+
+UPDATE attempt
+SET result = (SELECT SUM(is_correct) / 3 * 100
+              FROM testing JOIN answer USING (answer_id)
+              WHERE attempt_id = 8
+             )
+WHERE attempt_id = 8;
+
+/* 4. Удалить из таблицы attempt все попытки, выполненные раньше 1 мая 2020 года. Также удалить и все соответствующие этим попыткам вопросы из таблицы testing.*/
+
+delete from attempt
+where date_attempt < '2020-05-01';
+
+select * from attempt;
+
+select * from testing;
+ 
+
 
 
 
