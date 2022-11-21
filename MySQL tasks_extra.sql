@@ -112,7 +112,6 @@ delete from attempt
 where date_attempt < '2020-05-01';
 
 select * from attempt;
-
 select * from testing;
 
 -- ЗАПРОСЫ НА ВЫБОРКУ
@@ -235,7 +234,7 @@ order by name_program, name_enrollee);
 update applicant 
 inner join (select enrollee_id, if(sum(bonus) is null,0, sum(bonus)) as Бонус
 from achievement join enrollee_achievement using (achievement_id)
-right join enrollee using (enrollee_id)
+           right join enrollee using (enrollee_id)
 group by enrollee_id) as new using (enrollee_id)
 set itog = itog+ Бонус;
 
